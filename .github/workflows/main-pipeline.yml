@@ -1,0 +1,55 @@
+name: Main Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.set-tag.outputs.tag }}
+    steps:
+      - name: Set short SHA tag
+        id: set-tag
+        run: echo "tag=sha-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+  build-and-test:
+    uses: ./.github/workflows/reusable-build-test.yml
+    with:
+      node_version: "18"
+      run_tests: true
+
+  docker-build-backend:
+    needs: [build-and-test, prepare]
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      image_name: studynotion-backend
+      tag: ${{ needs.prepare.outputs.tag }}
+      dockerfile: Dockerfile.backend
+    secrets:
+      docker_username: ${{ secrets.DOCKER_USERNAME }}
+      docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  docker-build-frontend:
+    needs: [build-and-test, prepare]
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      image_name: studynotion-frontend
+      tag: ${{ needs.prepare.outputs.tag }}
+      dockerfile: Dockerfile.frontend
+    secrets:
+      docker_username: ${{ secrets.DOCKER_USERNAME }}
+      docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build-backend, docker-build-frontend]
+    environment: production
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "Backend image : ${{ needs.docker-build-backend.outputs.image_url }}"
+          echo "Frontend image: ${{ needs.docker-build-frontend.outputs.image_url }}"
