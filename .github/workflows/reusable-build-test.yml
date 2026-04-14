@@ -1,0 +1,54 @@
+name: Reusable Build and Test
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        required: true
+      run_tests:
+        type: boolean
+        default: true
+    outputs:
+      test_result:
+        description: "Result of the test - passed or failed"
+        value: ${{ jobs.build-and-test.outputs.test_result }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    outputs:
+      test_result: ${{ steps.set-result.outputs.test_result }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install backend dependencies
+        run: cd server && npm install
+
+      - name: Run tests
+        if: ${{ inputs.run_tests == true }}
+        id: run-tests
+        run: npm test -- --watchAll=false
+        continue-on-error: true
+
+      - name: Set test result output
+        id: set-result
+        run: |
+          if [ "${{ inputs.run_tests }}" == "false" ]; then
+            echo "test_result=passed" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.run-tests.outcome }}" == "success" ]; then
+            echo "test_result=passed" >> $GITHUB_OUTPUT
+          else
+            echo "test_result=failed" >> $GITHUB_OUTPUT
+          fi

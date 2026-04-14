@@ -1,0 +1,58 @@
+services:
+
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    env_file:
+      - .env
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - studynotion-network
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+    networks:
+      - studynotion-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: backend
+    env_file:
+      - server/.env
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mongodb
+    networks:
+      - studynotion-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: frontend
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+    networks:
+      - studynotion-network
+
+volumes:
+  mongo-data:
+
+networks:
+  studynotion-network:
+    driver: bridge
