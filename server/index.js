@@ -28,8 +28,8 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(
 	cors({
-		origin: "https://study-notion-psi-ashy.vercel.app",
-  		credentials: true,
+		origin: process.env.CORS_ORIGIN,
+       	        credentials: true,
 	})
 );
 app.use(
