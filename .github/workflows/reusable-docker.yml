@@ -40,7 +40,24 @@ jobs:
           username: ${{ secrets.docker_username }}
           password: ${{ secrets.docker_token }}
 
-      - name: Build and push image
+      - name: Build image (local only, for scanning)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }}
+          push: false
+          load: true
+          tags: ${{ secrets.docker_username }}/${{ inputs.image_name }}:scan-target
+
+      - name: Scan Docker Image for Vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.docker_username }}/${{ inputs.image_name }}:scan-target
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push image (only if scan passed)
         uses: docker/build-push-action@v5
         with:
           context: .
